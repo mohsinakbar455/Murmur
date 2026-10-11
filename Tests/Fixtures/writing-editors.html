@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>Murmur writing editor tests</title>
+<style>
+body{font:17px system-ui;margin:48px;max-width:820px;color:#222;background:#f4f4f4}label{display:block;margin:28px 0 8px}textarea,[contenteditable],#canvas{box-sizing:border-box;width:100%;padding:20px;border:1px solid #aaa;border-radius:8px;background:white;min-height:130px;font:inherit}#canvas{position:relative;cursor:text}#sink{position:absolute;width:1px;height:1px;min-height:0;padding:0;border:0;opacity:0;left:0;top:0}#render{white-space:pre-wrap}#render.selected{background:#a8cbff}output{display:block;margin-top:8px;color:#555;font-size:13px}
+</style>
+<h1>Writing Assistant test editors</h1><p>Synthetic text only. Select text and use Murmur to proofread or rewrite.</p>
+<label for="native">Standard text area</label><textarea id="native">She dont want to sends the report today.</textarea>
+<label>Rich text editor</label><div contenteditable="true" role="textbox" aria-label="Rich text editor">We was planning to meet on Friday.</div>
+<label>Canvas-style editor with a hidden keyboard input</label><div id="canvas"><span id="render">She dont want to sends the report today.</span><textarea id="sink" aria-label="Canvas keyboard input"></textarea></div><output id="status">Click the canvas text to select it.</output>
+<script>
+const canvas=document.querySelector('#canvas'),sink=document.querySelector('#sink'),render=document.querySelector('#render'),status=document.querySelector('#status');let selected=false,pastes=0;
+canvas.addEventListener('mousedown',()=>{selected=true;render.classList.add('selected');sink.focus();status.textContent='Canvas selection active; hidden input has no text or AX selection.'});
+sink.addEventListener('copy',e=>{if(selected){e.clipboardData.setData('text/plain',render.textContent);e.preventDefault()}});
+sink.addEventListener('paste',e=>{if(selected){render.textContent=e.clipboardData.getData('text/plain');e.preventDefault();selected=false;render.classList.remove('selected');status.textContent='Replacement delivered. Paste count: '+(++pastes)}});
+</script>

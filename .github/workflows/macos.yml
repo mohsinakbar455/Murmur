@@ -1,0 +1,55 @@
+name: macOS
+
+on:
+  push:
+    branches: [main]
+    paths: ['Sources/MurmurDictionary/**', 'Tests/MurmurDictionaryTests/**', 'shared/**', '.github/workflows/macos.yml']
+  pull_request:
+    paths: ['Sources/MurmurDictionary/**', 'Tests/MurmurDictionaryTests/**', 'shared/**', '.github/workflows/macos.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dictionary-contract:
+    name: Dictionary contract
+    runs-on: macos-15
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$latest/Contents/Developer"
+          swift --version
+
+      - name: Confirm the test vectors match
+        run: diff -q shared/dictionary-test-vectors.json Tests/MurmurDictionaryTests/dictionary-test-vectors.json
+
+      # Test the platform-neutral module as its own package. SwiftPM otherwise builds
+      # the macOS 26 app target too, which this macOS 15 runner cannot exercise.
+      - name: Test dictionary behavior
+        run: |
+          isolated="$(mktemp -d)"
+          mkdir -p "$isolated/Sources" "$isolated/Tests"
+          cp -R Sources/MurmurDictionary "$isolated/Sources/"
+          cp -R Tests/MurmurDictionaryTests "$isolated/Tests/"
+          cat > "$isolated/Package.swift" <<'SWIFT'
+          // swift-tools-version: 6.2
+          import PackageDescription
+          let package = Package(
+              name: "MurmurDictionaryContract",
+              targets: [
+                  .target(name: "MurmurDictionary"),
+                  .testTarget(
+                      name: "MurmurDictionaryTests",
+                      dependencies: ["MurmurDictionary"],
+                      resources: [.copy("dictionary-test-vectors.json")]
+                  ),
+              ]
+          )
+          SWIFT
+          swift test --package-path "$isolated"
